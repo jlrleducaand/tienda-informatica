@@ -349,7 +349,6 @@ class TiendaTest {
             prodHome.rollbackTransaction();
             throw e; // or display error message
         }
-
     }
 
     /**
@@ -1304,13 +1303,14 @@ class TiendaTest {
                 maxLength = (p.getNombre().length() > maxLength) ? p.getNombre().length() : maxLength;
             }
 
-            System.out.print("Fabricante" + " ".repeat(maxLength+2 - "Fabricante".length()));
+            System.out.print("Fabricante" + " ".repeat(maxLength + 2 - "Fabricante".length()));
             System.out.println("Cantidad");
             System.out.println("-".repeat(maxLength + 2 + "Cantidad".length()));
 
             int finalMaxLength = maxLength;
-            listFabOrdenadoPorValor.forEach((fabricante, productos) -> {;
-                System.out.print(fabricante + " ".repeat(finalMaxLength+2 - fabricante.length()));
+            listFabOrdenadoPorValor.forEach((fabricante, productos) -> {
+                ;
+                System.out.print(fabricante + " ".repeat(finalMaxLength + 2 - fabricante.length()));
                 System.out.println(productos);
             });
 
@@ -1337,8 +1337,43 @@ class TiendaTest {
             fabHome.beginTransaction();
 
             List<Fabricante> listFab = fabHome.findAll();
+            Map<Fabricante, Double[]> mapFabProd = listFab.stream()
+                    .collect(Collectors.toMap(
+                            fabricante -> fabricante,
+                            fabricante -> {
+                                Set<Producto> productos = fabricante.getProductos();
+                                // Calcular el precio mínimo, máximo y medio
+                                double minPrecio = productos.stream()
+                                        .mapToDouble(Producto::getPrecio)
+                                        .min()
+                                        .orElse(0.0);
 
-            //TODO STREAMS
+                                double maxPrecio = productos.stream()
+                                        .mapToDouble(Producto::getPrecio)
+                                        .max()
+                                        .orElse(0.0);
+
+                                double mediaPrecio = productos.stream()
+                                        .mapToDouble(Producto::getPrecio)
+                                        .average()
+                                        .orElse(0.0);
+
+                                // Crear el array con los valores calculados
+                                Double[] valores = {minPrecio, maxPrecio, mediaPrecio};
+
+                                return valores;
+                            }
+                    ));
+
+            mapFabProd.forEach((s, doubles) -> {
+
+                System.out.print(s.getNombre() + " ".repeat(20 - s.getNombre().length()));
+                System.out.print("\tPrecio mínimo: " + doubles[0] + " ".repeat(7 - String.valueOf(doubles[0]).length()));
+                System.out.print("\tPrecio máximo: " + doubles[1] + " ".repeat(7 - String.valueOf(doubles[1]).length()));
+                System.out.print("\tPrecio medio: " + doubles[2]);
+                System.out.println();
+            });
+
 
             fabHome.commitTransaction();
         } catch (RuntimeException e) {
@@ -1355,14 +1390,46 @@ class TiendaTest {
     void test40() {
 
         FabricanteHome fabHome = new FabricanteHome();
-
         try {
             fabHome.beginTransaction();
-
             List<Fabricante> listFab = fabHome.findAll();
+            Map<String, Double[]> mapFabProd = listFab.stream()
+                    .collect(Collectors.toMap(
+                            fabricante -> fabricante.getNombre(),
+                            fabricante -> {
+                                Set<Producto> productos = fabricante.getProductos();
+                                // Calcular el precio mínimo, máximo y medio
+                                double minPrecio = productos.stream()
+                                        .mapToDouble(Producto::getPrecio)
+                                        .min()
+                                        .orElse(0.0);
+                                double maxPrecio = productos.stream()
+                                        .mapToDouble(Producto::getPrecio)
+                                        .max()
+                                        .orElse(0.0);
+                                double mediaPrecio = productos.stream()
+                                        .mapToDouble(Producto::getPrecio)
+                                        .average()
+                                        .orElse(0.0);
+                                double numProd = productos.size();
 
-            //TODO STREAMS
+                                // Crear el array con los valores calculados
+                                Double[] valores = {minPrecio, maxPrecio, mediaPrecio, numProd};
 
+                                return valores;
+                            }
+                    ));
+
+            mapFabProd.forEach((s, doubles) -> {
+                if (doubles[2] > 200) {
+                    System.out.print(s + " ".repeat(10 - s.length()));
+                    System.out.print("\tPrecio mínimo: " + doubles[0] + " ".repeat(7 - String.valueOf(doubles[0]).length()));
+                    System.out.print("\tPrecio máximo: " + doubles[1] + " ".repeat(7 - String.valueOf(doubles[1]).length()));
+                    System.out.print("\tPrecio medio: " + doubles[2] + " ".repeat(7 - String.valueOf(doubles[1]).length()));
+                    System.out.print("\tCantidad: " + doubles[3]);
+                    System.out.println();
+                }
+            });
             fabHome.commitTransaction();
         } catch (RuntimeException e) {
             fabHome.rollbackTransaction();
@@ -1382,8 +1449,12 @@ class TiendaTest {
             fabHome.beginTransaction();
 
             List<Fabricante> listFab = fabHome.findAll();
+            List<String> lstFabProd = listFab.stream()
+                    .filter(f -> f.getProductos().size() >= 2)
+                    .map(fabricante -> fabricante.getNombre())
+                    .toList();
 
-            //TODO STREAMS
+            lstFabProd.forEach(System.out::println);
 
             fabHome.commitTransaction();
         } catch (RuntimeException e) {
@@ -1406,9 +1477,23 @@ class TiendaTest {
 
             List<Fabricante> listFab = fabHome.findAll();
 
-            //TODO STREAMS
+            List<String> resultado = listFab.stream()
+                    .filter(f -> f.getProductos().stream()
+                            .anyMatch(p -> p.getPrecio() >= 220))
+                    .sorted(Comparator.comparing(o -> ((Fabricante) o).getProductos().stream()   // me costo ver el object
+                                    .filter(p -> p.getPrecio() >= 220)
+                                    .count())
+                            .reversed())
+                    .map(fabricante -> fabricante.getNombre() + ": " +
+                            fabricante.getProductos().stream()
+                                    .filter(producto -> producto.getPrecio() >= 220)
+                                    .count())
+                    .collect(Collectors.toList());
 
             fabHome.commitTransaction();
+
+            resultado.forEach(System.out::println);
+
         } catch (RuntimeException e) {
             fabHome.rollbackTransaction();
             throw e; // or display error message
@@ -1428,8 +1513,14 @@ class TiendaTest {
             fabHome.beginTransaction();
 
             List<Fabricante> listFab = fabHome.findAll();
+            List<String> fabricantesConPrecioSuperiorA1000 = listFab.stream()
+                    .filter(fabricante -> fabricante.getProductos().stream()
+                            .mapToDouble(Producto::getPrecio)
+                            .sum() > 1000)
+                    .map(Fabricante::getNombre)
+                    .toList();
 
-            //TODO STREAMS
+            fabricantesConPrecioSuperiorA1000.forEach(System.out::println);
 
             fabHome.commitTransaction();
         } catch (RuntimeException e) {
@@ -1452,8 +1543,17 @@ class TiendaTest {
             fabHome.beginTransaction();
 
             List<Fabricante> listFab = fabHome.findAll();
+            List<String> fabricantesConPrecioSuperiorA1000Ordenados = listFab.stream()
+                    .filter(fabricante -> fabricante.getProductos().stream()
+                            .mapToDouble(Producto::getPrecio)
+                            .sum() > 1000)
+                    .sorted(comparingDouble(fabricante -> fabricante.getProductos().stream()
+                            .mapToDouble(Producto::getPrecio)
+                            .sum()))
+                    .map(Fabricante::getNombre)
+                    .toList();
 
-            //TODO STREAMS
+            fabricantesConPrecioSuperiorA1000Ordenados.forEach(System.out::println);
 
             fabHome.commitTransaction();
         } catch (RuntimeException e) {
@@ -1477,8 +1577,19 @@ class TiendaTest {
             fabHome.beginTransaction();
 
             List<Fabricante> listFab = fabHome.findAll();
+            List<String[]> resultado = listFab.stream()
+                    .flatMap(fabricante -> fabricante.getProductos().stream()
+                            .map(producto -> new String[]{producto.getNombre(), String.valueOf(producto.getPrecio()), fabricante.getNombre()}))
+                    .collect(Collectors.groupingBy(arr -> arr[2], Collectors.maxBy(Comparator.comparingDouble(arr -> Double.parseDouble(arr[1])))))
+                    .values()
+                    .stream()
+                    .map(Optional::get)
+                    .sorted(comparing(arr -> arr[2]))
+                    .toList();
 
-            //TODO STREAMS
+            for (String[] fila : resultado) {
+                System.out.printf("%-20s %-10s %s%n", fila[0], fila[1], fila[2]);
+            }
 
             fabHome.commitTransaction();
         } catch (RuntimeException e) {
@@ -1501,16 +1612,36 @@ class TiendaTest {
             fabHome.beginTransaction();
 
             List<Fabricante> listFab = fabHome.findAll();
+            Map<String, Double> mediaPreciosPorFabricante = listFab.stream()
+                    .collect(Collectors.toMap(Fabricante::getNombre,
+                            f -> f.getProductos().stream()
+                                    .mapToDouble(Producto::getPrecio)
+                                    .average()
+                                    .orElse(0.0)));
 
-            //TODO STREAMS
+            // Filtrar los productos que tienen un precio mayor o igual a la media
+            List<Producto> productosFiltrados = new ArrayList<>();
+            for (Fabricante f : listFab) {
+                for (Producto p : f.getProductos()) {
+                    if (p.getPrecio() >= mediaPreciosPorFabricante.get(p.getFabricante().getNombre())) {
+                        productosFiltrados.add(p);
+                    }
+                }
+            }
+            // con bucle porque estas lineas no me funcionaban *****
+            //productosFiltrados.sort(comparing(Producto::getFabricante)
+            //        .thenComparing(comparingDouble(Producto::getPrecio).reversed()));
+
+            // Imprimir los productos filtrados
+            for (Producto producto : productosFiltrados) {
+                System.out.println(producto);
+            }
 
             fabHome.commitTransaction();
         } catch (RuntimeException e) {
             fabHome.rollbackTransaction();
             throw e; // or display error message
         }
-
     }
-
 }
 
